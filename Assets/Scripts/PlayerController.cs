@@ -186,5 +186,6 @@ public class PlayerController : MonoBehaviour
         }
 
         allGuns[seletedGun].gameObject.SetActive(true);
+        allGuns[seletedGun].muzzelflash.SetActive(false);
     }
 }
