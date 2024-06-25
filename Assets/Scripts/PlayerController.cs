@@ -1,6 +1,7 @@
 using Unity.VisualScripting;
 using UnityEngine;
 using Photon.Pun;
+using TMPro;
 public class PlayerController : MonoBehaviourPunCallbacks
 {
     [SerializeField]
@@ -35,13 +36,19 @@ public class PlayerController : MonoBehaviourPunCallbacks
     [Space]
 
     public GameObject playerHitImapct;
+
+    public int maxhealth = 100;
+    private int currentHealth;
     void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
         cam = Camera.main;
         UIManager.instance.weaponTempSlider.maxValue = MaxheatValue;
         SwitchGun();
-
+      
+        currentHealth = maxhealth;
+        UIManager.instance.healthBar.maxValue = maxhealth;
+        UIManager.instance.healthBar.value = currentHealth;
         //Transform newTrans = SpawnManager.instance.GetSpawnPoint();
         //transform.position = newTrans.position;
         //transform.position = newTrans.position;
@@ -179,7 +186,7 @@ public class PlayerController : MonoBehaviourPunCallbacks
                 Debug.Log("hit " + hit.collider.gameObject.GetPhotonView().Owner.NickName);
                 PhotonNetwork.Instantiate(playerHitImapct.name, hit.point, Quaternion.identity);
 
-                hit.collider.gameObject.GetPhotonView().RPC("DealDamage", RpcTarget.All, photonView.Owner.NickName);
+                hit.collider.gameObject.GetPhotonView().RPC("DealDamage", RpcTarget.All, photonView.Owner.NickName, allGuns[seletedGun].shotDamge);
 
             }
             else
@@ -203,16 +210,24 @@ public class PlayerController : MonoBehaviourPunCallbacks
         muzzelCounter = muzzleDisplaytime;
     }
     [PunRPC]
-    public void DealDamage(string damager)
+    public void DealDamage(string damager, int damageAmount)
     {
-        TakeDamage(damager);
+        TakeDamage(damager, damageAmount);
     }
-    public void TakeDamage(string damager)
+    public void TakeDamage(string damager , int damageAmount)
     {
         if (photonView.IsMine)
         {
+            currentHealth -= damageAmount;
+           
             //Debug.Log(photonView.Owner.NickName + "I've been hit by " + damager);
-            PlayerSpawner.instance.Die();
+            if(currentHealth <= 0){
+                currentHealth = 0;
+
+                PlayerSpawner.instance.Die(damager);
+            }
+            UIManager.instance.healthBar.value = currentHealth;
+            
            
         }
 

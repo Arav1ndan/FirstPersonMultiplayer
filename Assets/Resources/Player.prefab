@@ -186,6 +186,7 @@ MonoBehaviour:
   timeBetweenShots: 0.1
   heatPerShot: 2
   muzzelflash: {fileID: 854427641824271068}
+  shotDamge: 20
 --- !u!1 &2006689194700723995
 GameObject:
   m_ObjectHideFlags: 0
@@ -236,6 +237,7 @@ MonoBehaviour:
   timeBetweenShots: 0.35
   heatPerShot: 5
   muzzelflash: {fileID: 5193435418677485287}
+  shotDamge: 35
 --- !u!1 &4098368389907414504
 GameObject:
   m_ObjectHideFlags: 0
@@ -286,6 +288,7 @@ MonoBehaviour:
   timeBetweenShots: 0.1
   heatPerShot: 1
   muzzelflash: {fileID: 2873051569481635816}
+  shotDamge: 15
 --- !u!1 &4302190277795620606
 GameObject:
   m_ObjectHideFlags: 0
@@ -443,6 +446,7 @@ MonoBehaviour:
   - {fileID: 2803735548764765673}
   - {fileID: 4257144510120014167}
   playerHitImapct: {fileID: 4775876736268575762, guid: 578558f417414b34292ed1fc83803ac6, type: 3}
+  maxhealth: 100
 --- !u!143 &6562066221875992873
 CharacterController:
   m_ObjectHideFlags: 0
