@@ -15,6 +15,12 @@ public class UIManager : MonoBehaviour
     public GameObject DeathScreen;
     public TMP_Text deathText;
     public Slider healthBar;
+    
+    public TMP_Text killText, deathsText;
+    
+    public GameObject leaderboard;
+    public LeaderBroadPlayer leaderBroadPlayerDisplay;
+    public GameObject EndScreen;
     void Start()
     {
         

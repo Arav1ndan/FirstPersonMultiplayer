@@ -4,6 +4,7 @@ using UnityEngine.SceneManagement;
 using Photon.Realtime;
 using ExitGames.Client.Photon;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
 {
     public static MatchManager instance;
@@ -20,19 +21,44 @@ public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
     public List<PlayerInfo> allPlayers = new List<PlayerInfo>();
     private int index;
 
+    private List<LeaderBroadPlayer> lboardPlayer = new List<LeaderBroadPlayer>();
+
+    public enum GameState
+    {
+        Waiting,
+        Playing,
+        Ending
+    }
+
+    public int KillsToWin = 3;
+    public Transform mapCamPoint;
+    public GameState state = GameState.Waiting;
+    public float waitAfterEnding = 5f;
+
     void Start()
     {
-        if(!PhotonNetwork.IsConnected){
+        if (!PhotonNetwork.IsConnected)
+        {
             SceneManager.LoadScene(0);
-        }else{
+        }
+        else
+        {
             NewPlayerSend(PhotonNetwork.NickName);
 
-            
+
         }
     }
     void Update()
     {
-       
+        if(Input.GetKeyDown(KeyCode.Tab))
+        {
+            if(UIManager.instance.leaderboard.activeInHierarchy)
+            {
+                UIManager.instance.leaderboard.SetActive(false);
+            }else{
+                ShowLeaderboard();
+            }
+        }
     }
     // public override void OnLeftRoom()
     // {
@@ -40,13 +66,13 @@ public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
     // }
     public void OnEvent(EventData photonEvent)
     {
-        if(photonEvent.Code < 200)
+        if (photonEvent.Code < 200)
         {
             EventCodes theEvent = (EventCodes)photonEvent.Code;
             object[] data = (object[])photonEvent.CustomData;
             Debug.Log("Received event " + theEvent);
 
-            switch(theEvent)
+            switch (theEvent)
             {
                 case EventCodes.NewPlayer:
 
@@ -66,15 +92,15 @@ public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
 
                     break;
 
-                // case EventCodes.NextMatch:
+                    // case EventCodes.NextMatch:
 
-                //     NextMatchReceive();
+                    //     NextMatchReceive();
 
-                //     break;
+                    //     break;
 
-                // case EventCodes.TimerSync:
+                    // case EventCodes.TimerSync:
 
-                //     TimerReceive(data);
+                    //     TimerReceive(data);
 
                     //break;
             }
@@ -115,13 +141,13 @@ public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
 
         ListPlayersSend();
     }
-     public void ListPlayersSend()
+    public void ListPlayersSend()
     {
         object[] package = new object[allPlayers.Count + 1];
 
         //package[0] = state;
 
-        for(int i = 0; i < allPlayers.Count; i++)
+        for (int i = 0; i < allPlayers.Count; i++)
         {
             object[] piece = new object[4];
 
@@ -143,7 +169,7 @@ public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
     public void ListPlayersReceive(object[] dataReceived)
     {
         allPlayers.Clear();
-        for(int i =1;i< dataReceived.Length;i++)
+        for (int i = 1; i < dataReceived.Length; i++)
         {
             object[] piece = (object[])dataReceived[i];
 
@@ -155,14 +181,15 @@ public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
             );
             allPlayers.Add(player);
 
-            if(PhotonNetwork.LocalPlayer.ActorNumber == player.actor){
-                index = i -1;
+            if (PhotonNetwork.LocalPlayer.ActorNumber == player.actor)
+            {
+                index = i - 1;
             }
         }
     }
     public void UpdateStatsSend(int actorSending, int statToUpdate, int amountToChange)
     {
-        object[] package = new object[] {actorSending, statToUpdate, amountToChange};
+        object[] package = new object[] { actorSending, statToUpdate, amountToChange };
 
         PhotonNetwork.RaiseEvent(
             (byte)EventCodes.UpdateStat,
@@ -178,26 +205,102 @@ public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
         int statType = (int)dataReceived[1];
         int amount = (int)dataReceived[2];
 
-        for(int i=0;i<allPlayers.Count;i++)
+        for (int i = 0; i < allPlayers.Count; i++)
         {
-            if(allPlayers[i].actor == actor)
+            if (allPlayers[i].actor == actor)
             {
-                switch(statType)
+                switch (statType)
                 {
                     case 0: //kills
                         allPlayers[i].kills += amount;
-                        Debug.Log("Player "+ allPlayers[i].name + " : kills"+ allPlayers[i].kills);
+                        Debug.Log("Player " + allPlayers[i].name + " : kills" + allPlayers[i].kills);
                         break;
                     case 1: //death
                         allPlayers[i].death += amount;
-                        Debug.Log("Player "+ allPlayers[i].name + " : death"+ allPlayers[i].death);
+                        Debug.Log("Player " + allPlayers[i].name + " : death" + allPlayers[i].death);
                         break;
 
+                }
+
+                if(i == index)
+                {
+                    UpdateStatsDisplay();
+                }
+
+                if(UIManager.instance.leaderboard.activeInHierarchy)
+                {
+                    ShowLeaderboard();
                 }
                 break;
 
             }
         }
+    }
+    public void UpdateStatsDisplay()
+    {
+        if (allPlayers.Count > index)
+        {
+            UIManager.instance.killText.text = "Kills: " + allPlayers[index].kills;
+            UIManager.instance.deathsText.text = "Deaths: " + allPlayers[index].death;
+        }
+        else
+        {
+            UIManager.instance.killText.text = "Kills: 0" ;
+            UIManager.instance.deathsText.text = "Deaths: 0";
+        }
+
+    }
+
+    void ShowLeaderboard()
+    {
+        UIManager.instance.leaderboard.SetActive(true);
+
+        foreach(LeaderBroadPlayer lp in lboardPlayer)
+        {
+            Destroy(lp.gameObject);
+        }
+        lboardPlayer.Clear();
+       
+       UIManager.instance.leaderBroadPlayerDisplay.gameObject.SetActive(false);
+
+        List<PlayerInfo> sorted = SortPlayers(allPlayers);
+
+       foreach(PlayerInfo player in sorted )
+       {
+            LeaderBroadPlayer newPlayerDisplay = Instantiate(UIManager.instance.leaderBroadPlayerDisplay, UIManager.instance.leaderBroadPlayerDisplay.transform.parent);
+
+            newPlayerDisplay.SetDetails(player.name, player.kills, player.death);
+
+            newPlayerDisplay.gameObject.SetActive(true);
+
+            lboardPlayer.Add(newPlayerDisplay);
+       }
+    }
+    private List<PlayerInfo> SortPlayers(List<PlayerInfo> players)
+    {
+        List<PlayerInfo> sorted = new List<PlayerInfo>();
+
+        while(sorted.Count < players.Count)
+        {
+            int highest = -1;
+            PlayerInfo selectedPlayer = players[0];
+
+            foreach(PlayerInfo player in players)
+            {
+                if (!sorted.Contains(player))
+                {
+                    if (player.kills > highest)
+                    {
+                        selectedPlayer = player;
+                        highest = player.kills;
+                    }
+                }
+            }
+
+            sorted.Add(selectedPlayer);
+        }
+
+        return sorted;
     }
 }
 [System.Serializable]
@@ -207,7 +310,7 @@ public class PlayerInfo
     public int actor, kills, death;
 
 
-    public PlayerInfo(string _name, int _actor, int _kills, int _deaths )
+    public PlayerInfo(string _name, int _actor, int _kills, int _deaths)
     {
         name = _name;
         actor = _actor;
