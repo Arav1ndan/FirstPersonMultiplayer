@@ -45,7 +45,7 @@ public class PlayerController : MonoBehaviourPunCallbacks
         cam = Camera.main;
         UIManager.instance.weaponTempSlider.maxValue = MaxheatValue;
         SwitchGun();
-      
+
         currentHealth = maxhealth;
         UIManager.instance.healthBar.maxValue = maxhealth;
         UIManager.instance.healthBar.value = currentHealth;
@@ -214,24 +214,25 @@ public class PlayerController : MonoBehaviourPunCallbacks
     {
         TakeDamage(damager, damageAmount, actor);
     }
-    public void TakeDamage(string damager , int damageAmount, int actor)
+    public void TakeDamage(string damager, int damageAmount, int actor)
     {
         if (photonView.IsMine)
         {
             currentHealth -= damageAmount;
-           
+
             //Debug.Log(photonView.Owner.NickName + "I've been hit by " + damager);
-            if(currentHealth <= 0){
+            if (currentHealth <= 0)
+            {
                 currentHealth = 0;
 
                 PlayerSpawner.instance.Die(damager);
 
                 MatchManager.instance.UpdateStatsSend(actor, 0, 1);
             }
-            
+
             UIManager.instance.healthBar.value = currentHealth;
-            
-           
+
+
         }
 
     }
@@ -239,8 +240,16 @@ public class PlayerController : MonoBehaviourPunCallbacks
     {
         if (photonView.IsMine)
         {
-            cam.transform.position = ViewPoint.position;
-            cam.transform.rotation = ViewPoint.rotation;
+            if (MatchManager.instance.state == MatchManager.GameState.Playing)
+            {
+                cam.transform.position = ViewPoint.position;
+                cam.transform.rotation = ViewPoint.rotation;
+            }
+            else
+            {
+                cam.transform.position = MatchManager.instance.mapCamPoint.position;
+                cam.transform.rotation = MatchManager.instance.mapCamPoint.rotation;
+            }
         }
     }
     void SwitchGun()

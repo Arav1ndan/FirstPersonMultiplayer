@@ -5,6 +5,7 @@ using Photon.Realtime;
 using ExitGames.Client.Photon;
 using System.Collections.Generic;
 using Unity.VisualScripting;
+using System.Collections;
 public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
 {
     public static MatchManager instance;
@@ -45,12 +46,13 @@ public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
         {
             NewPlayerSend(PhotonNetwork.NickName);
 
+            state = GameState.Playing;
 
         }
     }
     void Update()
     {
-        if(Input.GetKeyDown(KeyCode.Tab))
+        if(Input.GetKeyDown(KeyCode.Tab) && state != GameState.Ending)
         {
             if(UIManager.instance.leaderboard.activeInHierarchy)
             {
@@ -145,7 +147,7 @@ public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
     {
         object[] package = new object[allPlayers.Count + 1];
 
-        //package[0] = state;
+        package[0] = state;
 
         for (int i = 0; i < allPlayers.Count; i++)
         {
@@ -169,6 +171,9 @@ public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
     public void ListPlayersReceive(object[] dataReceived)
     {
         allPlayers.Clear();
+
+        state = (GameState)dataReceived[0];
+
         for (int i = 1; i < dataReceived.Length; i++)
         {
             object[] piece = (object[])dataReceived[i];
@@ -186,6 +191,7 @@ public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
                 index = i - 1;
             }
         }
+        StateCheck();
     }
     public void UpdateStatsSend(int actorSending, int statToUpdate, int amountToChange)
     {
@@ -235,6 +241,8 @@ public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
 
             }
         }
+
+        ScoreCheck();
     }
     public void UpdateStatsDisplay()
     {
@@ -302,6 +310,73 @@ public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
 
         return sorted;
     }
+    public override void OnLeftRoom()
+    {
+        base.OnLeftRoom();
+
+        SceneManager.LoadScene(0);
+    }
+
+    void ScoreCheck()
+    {
+         bool winnerFound = false;
+
+        foreach(PlayerInfo player in allPlayers)
+        {
+            if(player.kills >= KillsToWin && KillsToWin > 0)
+            {
+                winnerFound = true;
+                break;
+            }
+        }
+
+        if(winnerFound)
+        {
+            if(PhotonNetwork.IsMasterClient && state != GameState.Ending)
+            {
+                state = GameState.Ending;
+                ListPlayersSend();
+            }
+        }
+    }
+    void StateCheck()
+    {
+        if(state == GameState.Ending)
+        {
+            EndGame();
+        }
+    }
+    void EndGame()
+    {
+        state = GameState.Ending;
+
+        if(PhotonNetwork.IsMasterClient)
+        {
+            PhotonNetwork.DestroyAll();
+        }
+
+        UIManager.instance.EndScreen.SetActive(true);
+        ShowLeaderboard();
+
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+
+        Camera.main.transform.position = mapCamPoint.position;
+        Camera.main.transform.rotation = mapCamPoint.rotation;
+
+        StartCoroutine(EndCo());
+    }
+
+    private IEnumerator EndCo()
+    {
+        yield return new WaitForSeconds(waitAfterEnding);
+
+        PhotonNetwork.AutomaticallySyncScene = false;
+        PhotonNetwork.LeaveRoom();
+    }
+
+
+
 }
 [System.Serializable]
 public class PlayerInfo

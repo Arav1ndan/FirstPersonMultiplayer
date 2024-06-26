@@ -30,7 +30,7 @@ public class Launcher : MonoBehaviourPunCallbacks
     [Space]
     public GameObject nameInputScreen;
     public TMP_InputField nameInput;
-    public static bool hasSetNickName;
+    public static bool hasSetNick;
 
     public GameObject startButton;
     public GameObject roomTestButton;
@@ -49,6 +49,9 @@ public class Launcher : MonoBehaviourPunCallbacks
 #if UNITY_EDITOR
         roomTestButton.SetActive(true);
 #endif
+        
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
     }
 
     void CloseMenu()
@@ -74,7 +77,7 @@ public class Launcher : MonoBehaviourPunCallbacks
 
         PhotonNetwork.NickName = Random.Range(0, 1000).ToString();
 
-        if (!hasSetNickName)
+        if (!hasSetNick)
         {
             CloseMenu();
             nameInputScreen.SetActive(true);
@@ -224,7 +227,7 @@ public class Launcher : MonoBehaviourPunCallbacks
             CloseMenu();
             menuButtons.SetActive(true);
 
-            hasSetNickName = true;
+            hasSetNick = true;
         }
     }
     public void StartGame()
