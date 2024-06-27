@@ -17,7 +17,8 @@ public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
     {
         NewPlayer,
         ListPlayers,
-        UpdateStat
+        UpdateStat,
+        TimerSync
     }
     public List<PlayerInfo> allPlayers = new List<PlayerInfo>();
     private int index;
@@ -36,6 +37,10 @@ public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
     public GameState state = GameState.Waiting;
     public float waitAfterEnding = 5f;
 
+    public float matchLength = 180f;
+    private float currentMatchTime;
+    private float sendTimer;
+
     void Start()
     {
         if (!PhotonNetwork.IsConnected)
@@ -48,17 +53,56 @@ public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
 
             state = GameState.Playing;
 
+
+            SetupTimer();
+            if(!PhotonNetwork.IsMasterClient)
+            {
+                UIManager.instance.timerText.gameObject.SetActive(false);
+            }
         }
     }
     void Update()
     {
-        if(Input.GetKeyDown(KeyCode.Tab) && state != GameState.Ending)
+        if (Input.GetKeyDown(KeyCode.Tab) && state != GameState.Ending)
         {
-            if(UIManager.instance.leaderboard.activeInHierarchy)
+            if (UIManager.instance.leaderboard.activeInHierarchy)
             {
                 UIManager.instance.leaderboard.SetActive(false);
-            }else{
+            }
+            else
+            {
                 ShowLeaderboard();
+            }
+        }
+        if (PhotonNetwork.IsMasterClient)
+        {
+            if (currentMatchTime > 0 && state == GameState.Playing)
+            {
+                currentMatchTime -= Time.deltaTime;
+
+                if (currentMatchTime <= 0f)
+                {
+                    currentMatchTime = 0f;
+
+                    state = GameState.Ending;
+
+                    ListPlayersSend();
+
+                    StateCheck();
+
+                }
+
+                UpdateTimerDisplay();
+
+                sendTimer -= Time.deltaTime;
+                if(sendTimer <= 0)
+                {
+                    sendTimer += 1f;
+
+
+                    TimerSend();
+                }
+
             }
         }
     }
@@ -94,17 +138,17 @@ public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
 
                     break;
 
-                    // case EventCodes.NextMatch:
+                // case EventCodes.NextMatch:
 
-                    //     NextMatchReceive();
+                //     NextMatchReceive();
 
-                    //     break;
+                //     break;
 
-                    // case EventCodes.TimerSync:
+                case EventCodes.TimerSync:
 
-                    //     TimerReceive(data);
+                    TimerReceive(data);
 
-                    //break;
+                    break;
             }
         }
     }
@@ -228,12 +272,12 @@ public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
 
                 }
 
-                if(i == index)
+                if (i == index)
                 {
                     UpdateStatsDisplay();
                 }
 
-                if(UIManager.instance.leaderboard.activeInHierarchy)
+                if (UIManager.instance.leaderboard.activeInHierarchy)
                 {
                     ShowLeaderboard();
                 }
@@ -253,7 +297,7 @@ public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
         }
         else
         {
-            UIManager.instance.killText.text = "Kills: 0" ;
+            UIManager.instance.killText.text = "Kills: 0";
             UIManager.instance.deathsText.text = "Deaths: 0";
         }
 
@@ -263,18 +307,18 @@ public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
     {
         UIManager.instance.leaderboard.SetActive(true);
 
-        foreach(LeaderBroadPlayer lp in lboardPlayer)
+        foreach (LeaderBroadPlayer lp in lboardPlayer)
         {
             Destroy(lp.gameObject);
         }
         lboardPlayer.Clear();
-       
-       UIManager.instance.leaderBroadPlayerDisplay.gameObject.SetActive(false);
+
+        UIManager.instance.leaderBroadPlayerDisplay.gameObject.SetActive(false);
 
         List<PlayerInfo> sorted = SortPlayers(allPlayers);
 
-       foreach(PlayerInfo player in sorted )
-       {
+        foreach (PlayerInfo player in sorted)
+        {
             LeaderBroadPlayer newPlayerDisplay = Instantiate(UIManager.instance.leaderBroadPlayerDisplay, UIManager.instance.leaderBroadPlayerDisplay.transform.parent);
 
             newPlayerDisplay.SetDetails(player.name, player.kills, player.death);
@@ -282,18 +326,18 @@ public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
             newPlayerDisplay.gameObject.SetActive(true);
 
             lboardPlayer.Add(newPlayerDisplay);
-       }
+        }
     }
     private List<PlayerInfo> SortPlayers(List<PlayerInfo> players)
     {
         List<PlayerInfo> sorted = new List<PlayerInfo>();
 
-        while(sorted.Count < players.Count)
+        while (sorted.Count < players.Count)
         {
             int highest = -1;
             PlayerInfo selectedPlayer = players[0];
 
-            foreach(PlayerInfo player in players)
+            foreach (PlayerInfo player in players)
             {
                 if (!sorted.Contains(player))
                 {
@@ -319,20 +363,20 @@ public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
 
     void ScoreCheck()
     {
-         bool winnerFound = false;
+        bool winnerFound = false;
 
-        foreach(PlayerInfo player in allPlayers)
+        foreach (PlayerInfo player in allPlayers)
         {
-            if(player.kills >= KillsToWin && KillsToWin > 0)
+            if (player.kills >= KillsToWin && KillsToWin > 0)
             {
                 winnerFound = true;
                 break;
             }
         }
 
-        if(winnerFound)
+        if (winnerFound)
         {
-            if(PhotonNetwork.IsMasterClient && state != GameState.Ending)
+            if (PhotonNetwork.IsMasterClient && state != GameState.Ending)
             {
                 state = GameState.Ending;
                 ListPlayersSend();
@@ -341,7 +385,7 @@ public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
     }
     void StateCheck()
     {
-        if(state == GameState.Ending)
+        if (state == GameState.Ending)
         {
             EndGame();
         }
@@ -350,7 +394,7 @@ public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
     {
         state = GameState.Ending;
 
-        if(PhotonNetwork.IsMasterClient)
+        if (PhotonNetwork.IsMasterClient)
         {
             PhotonNetwork.DestroyAll();
         }
@@ -375,7 +419,42 @@ public class MatchManager : MonoBehaviourPunCallbacks, IOnEventCallback
         PhotonNetwork.LeaveRoom();
     }
 
+    public void SetupTimer()
+    {
+        if (matchLength > 0)
+        {
+            currentMatchTime = matchLength;
+            UpdateTimerDisplay();
+        }
+    }
+    public void UpdateTimerDisplay()
+    {
+        var timeToDisplay = System.TimeSpan.FromSeconds(currentMatchTime);
 
+        UIManager.instance.timerText.text = timeToDisplay.Minutes.ToString("00") + ":" + timeToDisplay.Seconds.ToString("00");
+    }
+
+    public void TimerSend()
+    {
+        object[] package = new object[] { (int)currentMatchTime, state };
+
+        PhotonNetwork.RaiseEvent(
+            (byte)EventCodes.TimerSync,
+            package,
+            new RaiseEventOptions { Receivers = ReceiverGroup.All },
+            new SendOptions { Reliability = true }
+            );
+    }
+    public void TimerReceive(object[] dataReceived)
+    {
+        currentMatchTime = (int)dataReceived[0];
+
+        state = (GameState)dataReceived[1];
+
+        UpdateTimerDisplay();
+
+        UIManager.instance.timerText.gameObject.SetActive(true);
+    }
 
 }
 [System.Serializable]

@@ -81,7 +81,7 @@ public class Launcher : MonoBehaviourPunCallbacks
         {
             CloseMenu();
             nameInputScreen.SetActive(true);
-            if (PlayerPrefs.HasKey("PlayerName")) ;
+            if (PlayerPrefs.HasKey("PlayerName")) 
             {
                 nameInput.text = PlayerPrefs.GetString("PlayerName");
             }

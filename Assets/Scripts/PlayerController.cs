@@ -39,6 +39,8 @@ public class PlayerController : MonoBehaviourPunCallbacks
 
     public int maxhealth = 100;
     private int currentHealth;
+
+    public AudioSource footStepSlow, footStepFast;
     void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
@@ -72,10 +74,28 @@ public class PlayerController : MonoBehaviourPunCallbacks
             if (Input.GetKey(KeyCode.LeftShift))
             {
                 ActiveMoveSpeed = RunSpeed;
+
+                if(!footStepFast.isPlaying && MoveDirection != Vector3.zero)
+                {
+                    footStepFast.Play();
+                    footStepSlow.Stop();
+                }
             }
             else
             {
                 ActiveMoveSpeed = MoveSpeed;
+
+                 if(!footStepSlow.isPlaying && MoveDirection != Vector3.zero)
+                {
+                    footStepFast.Stop();
+                    footStepSlow.Play();
+                }
+            }
+
+            if(MoveDirection == Vector3.zero || isGrounded)
+            {
+                footStepFast.Stop();
+                footStepSlow.Stop();
             }
             float yVel = Movement.y;
             Movement = ((transform.forward * MoveDirection.z) + (transform.right * MoveDirection.x)).normalized * ActiveMoveSpeed;
@@ -131,7 +151,7 @@ public class PlayerController : MonoBehaviourPunCallbacks
                 }
                 else if (Cursor.lockState == CursorLockMode.None)
                 {
-                    if (Input.GetMouseButtonDown(0))
+                    if (Input.GetMouseButtonDown(0) && !UIManager.instance.optionScreen.activeInHierarchy)
                     {
                         Cursor.lockState = CursorLockMode.Locked;
                     }
@@ -208,6 +228,9 @@ public class PlayerController : MonoBehaviourPunCallbacks
         }
         allGuns[seletedGun].muzzelflash.SetActive(true);
         muzzelCounter = muzzleDisplaytime;
+
+        allGuns[seletedGun].shotSound.Stop();
+        allGuns[seletedGun].shotSound.Play();
     }
     [PunRPC]
     public void DealDamage(string damager, int damageAmount, int actor)
